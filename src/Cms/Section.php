@@ -45,6 +45,16 @@ class Section extends Component
     }
 
     /**
+     * @return mixed
+     */
+    public function api()
+    {
+        if (isset($this->options['api']) === true && is_callable($this->options['api']) === true) {
+            return $this->options['api']->call($this);
+        }
+    }
+
+    /**
      * @return \Kirby\Cms\App
      */
     public function kirby()
@@ -63,6 +73,7 @@ class Section extends Component
     public function toArray(): array
     {
         $array = parent::toArray();
+        $array['type'] = $this->type();
 
         unset($array['model']);
 

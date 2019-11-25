@@ -204,6 +204,24 @@ class Api extends BaseApi
         ]);
     }
 
+    /**
+     * @param mixed $model
+     * @param string $name
+     * @param string $path
+     * @return mixed
+     */
+    public function sectionApi($model, string $name, string $path = null)
+    {
+        $section = $model->blueprint()->section($name);
+
+        $api = $this->clone([
+            'routes' => $section->api(),
+            'data'   => array_merge($this->data(), ['section' => $section])
+        ]);
+
+        return $api->call($path, $this->requestMethod(), $this->requestData());
+    }
+
     public function session(array $options = [])
     {
         return $this->kirby->session(array_merge([

@@ -1,10 +1,16 @@
 export default {
   inheritAttrs: false,
   props: {
-    blueprint: String,
     column: String,
-    parent: String,
+    empty: String,
+    headline: String,
+    help: String,
+    layout: String,
+    link: String,
     name: String,
+    parent: String,
+    required: Boolean,
+    size: String,
   },
   data() {
     return {
@@ -12,14 +18,9 @@ export default {
       error: null,
       isLoading: false,
       options: {
-        empty: null,
-        headline: null,
-        help: null,
-        layout: "list",
-        link: null,
+        add: false,
         max: null,
         min: null,
-        size: null,
         sortable: null
       },
       pagination: {
@@ -28,21 +29,15 @@ export default {
     };
   },
   computed: {
-    headline() {
-      return this.options.headline || " ";
-    },
-    help() {
-      return this.options.help;
-    },
     isInvalid() {
       if (this.options.min && this.data.length < this.options.min) {
         return true;
       }
-      
+
       if (this.options.max && this.data.length > this.options.max) {
         return true;
       }
-      
+
       return false;
     },
     language() {
@@ -58,6 +53,12 @@ export default {
     }
   },
   methods: {
+    fill(response) {
+      this.isLoading  = false;
+      this.options    = response.options;
+      this.pagination = response.pagination;
+      this.data       = this.items(response.data);
+    },
     items(data) {
       return data;
     },
@@ -75,10 +76,7 @@ export default {
           page: this.pagination.page
         })
         .then(response => {
-          this.isLoading = false;
-          this.options = response.options;
-          this.pagination = response.pagination;
-          this.data = this.items(response.data);
+          this.fill(response);
         })
         .catch(error => {
           this.isLoading = false;

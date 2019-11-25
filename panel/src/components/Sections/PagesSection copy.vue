@@ -1,71 +1,84 @@
 <template>
-  <section class="k-pages-section">
+  <section v-if="isLoading === false" class="k-pages-section">
 
     <header class="k-section-header">
-      <k-headline :link="link">
-        {{ headline }} <abbr v-if="required" :title="$t('section.required')">*</abbr>
+      <k-headline :link="options.link">
+        {{ headline }} <abbr v-if="options.min" :title="$t('section.required')">*</abbr>
       </k-headline>
 
-      <k-button-group v-if="options.add">
+      <k-button-group v-if="add">
         <k-button icon="add" @click="create">{{ $t("add") }}</k-button>
       </k-button-group>
     </header>
 
-    <template v-if="isLoading">
-      <k-empty
-        :layout="layout"
-        icon="clock"
-      >
-        {{ $t('loading') }}
-      </k-empty>
+    <template v-if="error">
+      <k-box theme="negative">
+        <k-text size="small">
+          <strong>
+            {{ $t("error.section.notLoaded", { name: name }) }}:
+          </strong>
+          {{ error }}
+        </k-text>
+      </k-box>
     </template>
-    <template v-else-if="data.length">
+
+    <template v-else>
       <k-collection
+        v-if="data.length"
+        :layout="options.layout"
         :help="help"
         :items="data"
-        :layout="layout"
         :pagination="pagination"
         :sortable="options.sortable"
         :size="options.size"
+        :data-invalid="isInvalid"
         @change="sort"
         @paginate="paginate"
         @action="action"
       />
-    </template>
-    <template v-else>
-      <k-empty
-        :layout="layout"
-        icon="page"
-        @click="create"
-      >
-        {{ empty || $t('pages.empty') }}
-      </k-empty>
-      <footer class="k-collection-footer" v-if="help">
-        <k-text
-          theme="help"
-          class="k-collection-help"
-          v-html="help"
-        />
-      </footer>
-    </template>
 
-    <k-page-create-dialog ref="create" />
-    <k-page-duplicate-dialog ref="duplicate" />
-    <k-page-rename-dialog ref="rename" @success="update" />
-    <k-page-url-dialog ref="url" @success="update" />
-    <k-page-status-dialog ref="status" @success="update" />
-    <k-page-template-dialog ref="template" @success="update" />
-    <k-page-remove-dialog ref="remove" @success="update" />
+      <template v-else>
+        <k-empty
+          :layout="options.layout"
+          :data-invalid="isInvalid"
+          icon="page"
+          @click="create"
+        >
+          {{ options.empty || $t('pages.empty') }}
+        </k-empty>
+        <footer class="k-collection-footer">
+          <k-text
+            v-if="help"
+            theme="help"
+            class="k-collection-help"
+            v-html="help"
+          />
+        </footer>
+      </template>
+
+      <k-page-create-dialog ref="create" />
+      <k-page-duplicate-dialog ref="duplicate" />
+      <k-page-rename-dialog ref="rename" @success="update" />
+      <k-page-url-dialog ref="url" @success="update" />
+      <k-page-status-dialog ref="status" @success="update" />
+      <k-page-template-dialog ref="template" @success="update" />
+      <k-page-remove-dialog ref="remove" @success="update" />
+    </template>
 
   </section>
 
 </template>
 
 <script>
-import CollectionMixin from "@/mixins/section/collection.js";
+import CollectionSectionMixin from "@/mixins/section/collection.js";
 
 export default {
-  mixins: [CollectionMixin],
+  mixins: [CollectionSectionMixin],
+  computed: {
+    add() {
+      return this.options.add && this.$permissions.pages.create;
+    }
+  },
   created() {
     this.load();
     this.$events.$on("page.changeStatus", this.reload);
@@ -74,6 +87,15 @@ export default {
     this.$events.$off("page.changeStatus", this.reload);
   },
   methods: {
+    create() {
+      if (this.add) {
+        this.$refs.create.open(
+          this.options.link || this.parent,
+          this.parent + "/children/blueprints",
+          this.name
+        );
+      }
+    },
     action(page, action) {
 
       switch (action) {
@@ -117,7 +139,7 @@ export default {
             const number = this.options.min > 1 ? "plural" : "singular";
             this.$store.dispatch("notification/error", {
               message: this.$t("error.section.pages.min." + number, {
-                section: this.headline || this.name,
+                section: this.options.headline || this.name,
                 min: this.options.min
               })
             });
@@ -132,15 +154,6 @@ export default {
         }
       }
 
-    },
-    create() {
-      if (this.options.add) {
-        this.$refs.create.open(
-          this.link || this.parent,
-          this.parent + "/children/blueprints",
-          this.name
-        );
-      }
     },
     items(data) {
       return data.map(page => {

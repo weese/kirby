@@ -1,23 +1,19 @@
 <template>
-
-  <section v-if="isLoading === false" class="k-files-section">
+  <section class="k-files-section">
 
     <header class="k-section-header">
       <k-headline>
-        {{ headline }} <abbr v-if="options.min" :title="$t('section.required')">*</abbr>
+        {{ headline }} <abbr v-if="required" :title="$t('section.required')">*</abbr>
       </k-headline>
       <k-button-group v-if="add">
         <k-button icon="upload" @click="upload">{{ $t("add") }}</k-button>
       </k-button-group>
     </header>
 
-    <template v-if="error">
-      <k-box theme="negative">
-        <k-text size="small">
-          <strong>{{ $t("error.section.notLoaded", {name: name}) }}:</strong>
-          {{ error }}
-        </k-text>
-      </k-box>
+    <template v-if="isLoading">
+      <k-empty :layout="layout" icon="page">
+        Loading …
+      </k-empty>
     </template>
 
     <template v-else>
@@ -26,19 +22,19 @@
           v-if="data.length"
           :help="help"
           :items="data"
-          :layout="options.layout"
+          :layout="layout"
           :pagination="pagination"
           :sortable="options.sortable"
           :size="options.size"
-          :data-invalid="isInvalid" 
+          :data-invalid="isInvalid"
           @sort="sort"
           @paginate="paginate"
           @action="action"
         />
         <template v-else>
           <k-empty
-            :layout="options.layout"
-            :data-invalid="isInvalid" 
+            :layout="layout"
+            :data-invalid="isInvalid"
             icon="image"
             @click="if (add) upload()"
           >

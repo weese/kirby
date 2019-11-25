@@ -77,12 +77,10 @@ return [
         }
     ],
     [
-        'pattern' => 'site/sections/(:any)',
+        'pattern' => 'site/sections/(:any)/(:all?)',
         'method'  => 'GET',
-        'action'  => function (string $sectionName) {
-            if ($section = $this->site()->blueprint()->section($sectionName)) {
-                return $section->toResponse();
-            }
+        'action'  => function (string $sectionName, string $path = null) {
+            return $this->sectionApi($this->site(), $sectionName, $path);
         }
     ],
     [

@@ -1,6 +1,7 @@
 <?php
 
 use Kirby\Cms\File;
+use Kirby\Cms\FilesSection;
 use Kirby\Toolkit\I18n;
 
 return [
@@ -65,170 +66,52 @@ return [
         }
     ],
     'computed' => [
-        'accept' => function () {
-            if ($this->template) {
-                $file = new File([
-                    'filename' => 'tmp',
-                    'template' => $this->template
-                ]);
-
-                return $file->blueprint()->accept()['mime'] ?? '*';
-            }
-
-            return null;
-        },
-        'parent' => function () {
-            return $this->parentModel();
-        },
-        'files' => function () {
-            $files = $this->parent->files()->template($this->template);
-
-            if ($this->sortBy) {
-                $files = $files->sortBy(...$files::sortArgs($this->sortBy));
-            } elseif ($this->sortable === true) {
-                $files = $files->sortBy('sort', 'asc', 'filename', 'asc');
-            }
-
-            // flip
-            if ($this->flip === true) {
-                $files = $files->flip();
-            }
-
-            // apply the default pagination
-            $files = $files->paginate([
-                'page'  => $this->page,
-                'limit' => $this->limit
-            ]);
-
-            return $files;
-        },
-        'data' => function () {
-            $data = [];
-
-            // the drag text needs to be absolute when the files come from
-            // a different parent model
-            $dragTextAbsolute = $this->model->is($this->parent) === false;
-
-            foreach ($this->files as $file) {
-                $image = $file->panelImage($this->image);
-
-                $data[] = [
-                    'dragText' => $file->dragText('auto', $dragTextAbsolute),
-                    'filename' => $file->filename(),
-                    'id'       => $file->id(),
-                    'text'     => $file->toString($this->text),
-                    'info'     => $file->toString($this->info ?? false),
-                    'icon'     => $file->panelIcon($image),
-                    'image'    => $image,
-                    'link'     => $file->panelUrl(true),
-                    'parent'   => $file->parent()->panelPath(),
-                    'url'      => $file->url(),
-                ];
-            }
-
-            return $data;
-        },
-        'total' => function () {
-            return $this->files->pagination()->total();
-        },
-        'errors' => function () {
-            $errors = [];
-
-            if ($this->validateMax() === false) {
-                $errors['max'] = I18n::template('error.section.files.max.' . I18n::form($this->max), [
-                    'max'     => $this->max,
-                    'section' => $this->headline
-                ]);
-            }
-
-            if ($this->validateMin() === false) {
-                $errors['min'] = I18n::template('error.section.files.min.' . I18n::form($this->min), [
-                    'min'     => $this->min,
-                    'section' => $this->headline
-                ]);
-            }
-
-            if (empty($errors) === true) {
-                return [];
-            }
-
-            return [
-                $this->name => [
-                    'label'   => $this->headline,
-                    'message' => $errors,
-                ]
-            ];
-        },
         'link' => function () {
-            $modelLink  = $this->model->panelUrl(true);
-            $parentLink = $this->parent->panelUrl(true);
+            $modelLink  = $this->model()->panelUrl(true);
+            $parentLink = $this->parentModel()->panelUrl(true);
 
             if ($modelLink !== $parentLink) {
                 return $parentLink;
             }
         },
-        'pagination' => function () {
-            return $this->pagination();
-        },
-        'sortable' => function () {
-            if ($this->sortable === false) {
-                return false;
-            }
-
-            if ($this->sortBy !== null) {
-                return false;
-            }
-
-            if ($this->flip === true) {
-                return false;
-            }
-
-            return true;
-        },
-        'upload' => function () {
-            if ($this->isFull() === true) {
-                return false;
-            }
-
-            // count all uploaded files
-            $total = count($this->data);
-            $max   = $this->max ? $this->max - $total : null;
-
-            if ($this->max && $total === $this->max - 1) {
-                $multiple = false;
-            } else {
-                $multiple = true;
-            }
-
-            return [
-                'accept'     => $this->accept,
-                'multiple'   => $multiple,
-                'max'        => $max,
-                'api'        => $this->parent->apiUrl(true) . '/files',
-                'attributes' => array_filter([
-                    'template' => $this->template
-                ])
-            ];
-        }
     ],
     'toArray' => function () {
         return [
-            'data'    => $this->data,
-            'errors'  => $this->errors,
-            'options' => [
-                'accept'   => $this->accept,
-                'empty'    => $this->empty,
-                'headline' => $this->headline,
-                'help'     => $this->help,
-                'layout'   => $this->layout,
-                'link'     => $this->link,
-                'max'      => $this->max,
-                'min'      => $this->min,
-                'size'     => $this->size,
-                'sortable' => $this->sortable,
-                'upload'   => $this->upload
-            ],
-            'pagination' => $this->pagination
+            'empty'    => $this->empty,
+            'headline' => $this->headline,
+            'help'     => $this->help,
+            'layout'   => $this->layout,
+            'link'     => $this->link,
+            'name'     => $this->name,
+            'required' => $this->min > 0,
+            'type'     => $this->type,
         ];
+    },
+    'api' => function () {
+
+        $section = new FilesSection($this->parentModel(), $this->props);
+
+        return [
+            [
+                'pattern' => '',
+                'action'  => function () use ($section) {
+                    return [
+                        'data'    => $section->data(),
+                        'errors'  => $section->errors(),
+                        'options' => [
+                            'accept'   => $section->accept(),
+                            'max'      => $section->option('max'),
+                            'min'      => $section->option('min'),
+                            'size'     => $section->option('size'),
+                            'sortable' => $section->sortable(),
+                            'upload'   => $section->upload()
+                        ],
+                        'pagination' => $section->pagination()
+                    ];
+                }
+            ]
+        ];
+
     }
+
 ];

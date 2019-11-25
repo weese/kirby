@@ -5,6 +5,7 @@
         <component
           v-if="exists(section.type)"
           :key="parent + '-column-' + columnIndex + '-section-' + sectionIndex + '-' + blueprint"
+          :ref="'section-' + section.name"
           :is="'k-' + section.type + '-section'"
           :name="section.name"
           :parent="parent"

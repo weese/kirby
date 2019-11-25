@@ -1,11 +1,7 @@
 <template>
-  <section v-if="!isLoading" class="k-fields-section">
-    <template v-if="issue">
-      <k-headline class="k-fields-issue-headline">Error</k-headline>
-      <k-box :text="issue.message" theme="negative" />
-    </template>
+  <section class="k-fields-section">
     <k-form
-      :fields="fields"
+      :fields="form"
       :validate="true"
       :value="values"
       :disabled="$store.state.content.status.lock !== null"
@@ -21,14 +17,27 @@ import SectionMixin from "@/mixins/section/section.js";
 export default {
   mixins: [SectionMixin],
   inheritAttrs: false,
-  data() {
-    return {
-      fields: {},
-      isLoading: true,
-      issue: null
-    };
+  props: {
+    fields: Object,
   },
   computed: {
+    form() {
+      let form = {};
+
+      Object.keys(this.fields).forEach(name => {
+        form[name] = {
+          ...this.fields[name],
+          section: this.name,
+          endpoints: {
+            field: this.parent + "/fields/" + name,
+            section: this.parent + "/sections/" + this.name,
+            model: this.parent
+          }
+        };
+      });
+
+      return form;
+    },
     language() {
       return this.$store.state.languages.current;
     },
@@ -36,42 +45,12 @@ export default {
       return this.$store.getters["content/values"]();
     }
   },
-  watch: {
-    language() {
-      this.fetch();
-    }
-  },
-  created: function() {
-    this.fetch();
-  },
   methods: {
     input(values, field, fieldName) {
       this.$store.dispatch("content/update", [
         fieldName,
         values[fieldName]
       ]);
-    },
-    fetch() {
-      this.$api
-        .get(this.parent + "/sections/" + this.name)
-        .then(response => {
-          this.fields = response.fields;
-
-          Object.keys(this.fields).forEach(name => {
-            this.fields[name].section = this.name;
-            this.fields[name].endpoints = {
-              field: this.parent + "/fields/" + name,
-              section: this.parent + "/sections/" + this.name,
-              model: this.parent
-            };
-          });
-
-          this.isLoading = false;
-        })
-        .catch(error => {
-          this.issue = error;
-          this.isLoading = false;
-        });
     },
     onSubmit($event) {
       this.$events.$emit("keydown.cmd.s", $event);

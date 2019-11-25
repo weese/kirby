@@ -1,6 +1,7 @@
 <?php
 
 use Kirby\Cms\Blueprint;
+use Kirby\Cms\PagesSection;
 use Kirby\Toolkit\A;
 use Kirby\Toolkit\I18n;
 
@@ -86,165 +87,17 @@ return [
         }
     ],
     'computed' => [
-        'parent' => function () {
-            return $this->parentModel();
-        },
-        'pages' => function () {
-            switch ($this->status) {
-                case 'draft':
-                    $pages = $this->parent->drafts();
-                    break;
-                case 'listed':
-                    $pages = $this->parent->children()->listed();
-                    break;
-                case 'published':
-                    $pages = $this->parent->children();
-                    break;
-                case 'unlisted':
-                    $pages = $this->parent->children()->unlisted();
-                    break;
-                default:
-                    $pages = $this->parent->childrenAndDrafts();
-            }
-
-            // loop for the best performance
-            foreach ($pages->data as $id => $page) {
-
-                // remove all protected pages
-                if ($page->isReadable() === false) {
-                    unset($pages->data[$id]);
-                    continue;
-                }
-
-                // filter by all set templates
-                if ($this->templates && in_array($page->intendedTemplate()->name(), $this->templates) === false) {
-                    unset($pages->data[$id]);
-                    continue;
-                }
-            }
-
-            // sort
-            if ($this->sortBy) {
-                $pages = $pages->sortBy(...$pages::sortArgs($this->sortBy));
-            }
-
-            // flip
-            if ($this->flip === true) {
-                $pages = $pages->flip();
-            }
-
-            // pagination
-            $pages = $pages->paginate([
-                'page'  => $this->page,
-                'limit' => $this->limit
-            ]);
-
-            return $pages;
-        },
-        'total' => function () {
-            return $this->pages->pagination()->total();
-        },
-        'data' => function () {
-            $data = [];
-
-            foreach ($this->pages as $item) {
-                $permissions = $item->permissions();
-                $image       = $item->panelImage($this->image);
-
-                $data[] = [
-                    'id'          => $item->id(),
-                    'dragText'    => $item->dragText(),
-                    'text'        => $item->toString($this->text),
-                    'info'        => $item->toString($this->info ?? false),
-                    'parent'      => $item->parentId(),
-                    'icon'        => $item->panelIcon($image),
-                    'image'       => $image,
-                    'link'        => $item->panelUrl(true),
-                    'status'      => $item->status(),
-                    'permissions' => [
-                        'sort'         => $permissions->can('sort'),
-                        'changeStatus' => $permissions->can('changeStatus')
-                    ]
-                ];
-            }
-
-            return $data;
-        },
-        'errors' => function () {
-            $errors = [];
-
-            if ($this->validateMax() === false) {
-                $errors['max'] = I18n::template('error.section.pages.max.' . I18n::form($this->max), [
-                    'max'     => $this->max,
-                    'section' => $this->headline
-                ]);
-            }
-
-            if ($this->validateMin() === false) {
-                $errors['min'] = I18n::template('error.section.pages.min.' . I18n::form($this->min), [
-                    'min'     => $this->min,
-                    'section' => $this->headline
-                ]);
-            }
-
-            if (empty($errors) === true) {
-                return [];
-            }
-
-            return [
-                $this->name => [
-                    'label'   => $this->headline,
-                    'message' => $errors,
-                ]
-            ];
-        },
-        'add' => function () {
-            if ($this->create === false) {
-                return false;
-            }
-
-            if (in_array($this->status, ['draft', 'all']) === false) {
-                return false;
-            }
-
-            if ($this->isFull() === true) {
-                return false;
-            }
-
-            return true;
-        },
         'link' => function () {
-            $modelLink  = $this->model->panelUrl(true);
-            $parentLink = $this->parent->panelUrl(true);
+            $modelLink  = $this->model()->panelUrl(true);
+            $parentLink = $this->parentModel()->panelUrl(true);
 
             if ($modelLink !== $parentLink) {
                 return $parentLink;
             }
         },
-        'pagination' => function () {
-            return $this->pagination();
-        },
-        'sortable' => function () {
-            if (in_array($this->status, ['listed', 'published', 'all']) === false) {
-                return false;
-            }
-
-            if ($this->sortable === false) {
-                return false;
-            }
-
-            if ($this->sortBy !== null) {
-                return false;
-            }
-
-            if ($this->flip === true) {
-                return false;
-            }
-
-            return true;
-        }
     ],
     'methods' => [
+
         'blueprints' => function () {
             $blueprints = [];
             $templates  = empty($this->create) === false ? A::wrap($this->create) : $this->templates;
@@ -276,21 +129,40 @@ return [
     ],
     'toArray' => function () {
         return [
-            'data'    => $this->data,
-            'errors'  => $this->errors,
-            'options' => [
-                'add'      => $this->add,
-                'empty'    => $this->empty,
-                'headline' => $this->headline,
-                'help'     => $this->help,
-                'layout'   => $this->layout,
-                'link'     => $this->link,
-                'max'      => $this->max,
-                'min'      => $this->min,
-                'size'     => $this->size,
-                'sortable' => $this->sortable
-            ],
-            'pagination' => $this->pagination,
+            'empty'    => $this->empty,
+            'headline' => $this->headline,
+            'help'     => $this->help,
+            'layout'   => $this->layout,
+            'link'     => $this->link,
+            'name'     => $this->name,
+            'required' => $this->min > 0,
+            'type'     => $this->type,
         ];
+    },
+    'api' => function () {
+
+        $section = new PagesSection($this->parentModel(), $this->props);
+
+        return [
+            [
+                'pattern' => '',
+                'action'  => function () use ($section) {
+
+                    return [
+                        'data'    => $section->data(),
+                        'errors'  => $section->errors(),
+                        'options' => [
+                            'add'      => $section->add(),
+                            'max'      => $section->option('max'),
+                            'min'      => $section->option('min'),
+                            'size'     => $section->option('size'),
+                            'sortable' => $section->sortable()
+                        ],
+                        'pagination' => $section->pagination(),
+                    ];
+                }
+            ]
+        ];
+
     }
 ];
