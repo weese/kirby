@@ -31,6 +31,21 @@ class A
         return $array + $append;
     }
 
+    public static function dot(array $array = [], string $prepend = '')
+    {
+        $results = [];
+
+        foreach ($array as $key => $value) {
+            if (is_array($value) === true) {
+                $results = array_merge($results, static::dot($value, $prepend . $key . '.'));
+            } else {
+                $results[$prepend . $key] = $value;
+            }
+        }
+
+        return $results;
+    }
+
     /**
      * Gets an element of an array by key
      *

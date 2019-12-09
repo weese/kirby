@@ -617,6 +617,9 @@ class AppPluginsTest extends TestCase
             ]
         ]);
 
+        dump($kirby->extensions('options'));
+
+
         $this->assertEquals(['three'], $kirby->option('test.plugin.foo'));
     }
 

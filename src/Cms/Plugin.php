@@ -5,6 +5,8 @@ namespace Kirby\Cms;
 use Exception;
 use Kirby\Data\Data;
 use Kirby\Exception\InvalidArgumentException;
+use Kirby\Toolkit\A;
+use Kirby\Toolkit\Str;
 
 /**
  * Represents a Plugin and handles parsing of
@@ -19,7 +21,9 @@ use Kirby\Exception\InvalidArgumentException;
  */
 class Plugin extends Model
 {
+    protected $developer;
     protected $extends;
+    protected $id;
     protected $info;
     protected $name;
     protected $root;
@@ -35,12 +39,25 @@ class Plugin extends Model
         $this->extends = $extends;
         $this->root    = $extends['root'] ?? dirname(debug_backtrace()[0]['file']);
 
+        // convert all options to dot notation
+        $this->extends['options'] = A::dot($extends['options'] ?? []);
+
         unset($this->extends['root']);
+    }
+
+    public function developer(): string
+    {
+        return $this->developer;
     }
 
     public function extends(): array
     {
         return $this->extends;
+    }
+
+    public function id(): string
+    {
+        return $this->id;
     }
 
     public function info(): array
@@ -104,7 +121,11 @@ class Plugin extends Model
             throw new InvalidArgumentException('The plugin name must follow the format "a-z0-9-/a-z0-9-"');
         }
 
-        $this->name = $name;
+        $parts = Str::split($name, '/');
+
+        $this->name      = $name;
+        $this->developer = $parts[0];
+        $this->id        = $parts[1];
         return $this;
     }
 

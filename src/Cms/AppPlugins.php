@@ -287,7 +287,7 @@ trait AppPlugins
             $options = $prefixed;
         }
 
-        return $this->extensions['options'] = $this->options = A::merge($options, $this->options, A::MERGE_REPLACE);
+        return $this->extensions['options'] = $this->options = array_merge($this->options, A::dot($options));
     }
 
     /**
