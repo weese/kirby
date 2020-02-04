@@ -113,7 +113,8 @@ class Router
             }
 
             if (is_a(static::$afterEach, 'Closure') === true) {
-                $result = (static::$afterEach)($route, $path, $method, $result);
+                $used   = $loop === false;
+                $result = (static::$afterEach)($route, $path, $method, $used, $result);
             }
         }
 
